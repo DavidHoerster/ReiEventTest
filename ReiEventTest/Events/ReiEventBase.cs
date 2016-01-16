@@ -11,7 +11,7 @@ namespace ReiEventTest.Events
     {
         public Guid FormId { get; set; }
         public String ReportingEntityInstanceId { get; set; }
-        public Int64 Timestamp { get; set; }
+        public Int64 Version { get; set; }
         public DateTime Date { get; set; }
     }
 }

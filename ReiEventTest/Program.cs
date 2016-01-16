@@ -98,7 +98,7 @@ namespace ReiEventTest
         {
             var instance = new ReportingEntityInstance(formId, rei, catalog);
             var events = coll.Find<ReiEventBase>(veb => veb.FormId == formId && veb.ReportingEntityInstanceId == rei)
-                             .SortBy(veb => veb.Timestamp);
+                             .SortBy(veb => veb.Version);
             instance.LoadFromHistory(events.ToEnumerable());
             return instance;
         }
@@ -114,7 +114,7 @@ namespace ReiEventTest
         {
             return coll.OfType<ControlAnswered>()
                                 .Find<ControlAnswered>(c => c.FormId == formId && c.ReportingEntityInstanceId == rei && c.ControlId == controlId)
-                                .SortBy(c => c.Timestamp)
+                                .SortBy(c => c.Version)
                                 .ToEnumerable();
         }
 

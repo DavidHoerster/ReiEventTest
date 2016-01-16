@@ -38,7 +38,7 @@ namespace ReiEventTest
                 FormId = FormDefinitionId,
                 Id = Guid.NewGuid(),
                 ReportingEntityInstanceId = ReportingEntityId,
-                Timestamp = Version,
+                Version = Version,
                 Values = answers,
             });
 
@@ -55,7 +55,7 @@ namespace ReiEventTest
                         Id = Guid.NewGuid(),
                         ReportingEntityInstanceId = ReportingEntityId,
                         Message = msg.Message.Message,
-                        Timestamp = Version,
+                        Version = Version,
                         Validator = msg.Message.ObjectName,
                         Values = answers,
                     });
@@ -70,7 +70,7 @@ namespace ReiEventTest
                         Id = Guid.NewGuid(),
                         ReportingEntityInstanceId = ReportingEntityId,
                         Message = msg.Message.Message,
-                        Timestamp = Version,
+                        Version = Version,
                         Validator = msg.Message.ObjectName,
                         Values = answers,
                     });
@@ -125,7 +125,7 @@ namespace ReiEventTest
                 item.Values = evt.Values;
                 item.State = false;
                 item.Message = evt.Message;
-                item.Timestamp = evt.Timestamp;
+                item.Timestamp = evt.Version;
             }
             else
             {
@@ -134,13 +134,13 @@ namespace ReiEventTest
                     ControlId = evt.ControlId,
                     Message = evt.Message,
                     State = false,
-                    Timestamp = evt.Timestamp,
+                    Timestamp = evt.Version,
                     Values = evt.Values,
                     Validator = evt.Validator
                 };
                 _controlStatus.Add(key, item);
             }
-            Version = evt.Timestamp;
+            Version = evt.Version;
         }
 
         private void Apply(ValidationPassed evt)
@@ -152,7 +152,7 @@ namespace ReiEventTest
                 item.Values = evt.Values;
                 item.State = true;
                 item.Message = evt.Message;
-                item.Timestamp = evt.Timestamp;
+                item.Timestamp = evt.Version;
             }
             else
             {
@@ -161,13 +161,13 @@ namespace ReiEventTest
                     ControlId = evt.ControlId,
                     Message = evt.Message,
                     State = true,
-                    Timestamp = evt.Timestamp,
+                    Timestamp = evt.Version,
                     Values = evt.Values,
                     Validator = evt.Validator
                 };
                 _controlStatus.Add(key, item);
             }
-            Version = evt.Timestamp;
+            Version = evt.Version;
         }
 
         private void Apply(ControlAnswered evt)
@@ -178,7 +178,7 @@ namespace ReiEventTest
                 var item = _controlAnswers[key];
                 item.Values = evt.Values;
                 item.Date = evt.Date;
-                item.Timestamp = evt.Timestamp;
+                item.Timestamp = evt.Version;
             }
             else
             {
@@ -186,12 +186,12 @@ namespace ReiEventTest
                 {
                     ControlId = evt.ControlId,
                     Date = evt.Date,
-                    Timestamp = evt.Timestamp,
+                    Timestamp = evt.Version,
                     Values = evt.Values
                 };
                 _controlAnswers.Add(key, item);
             }
-            Version = evt.Timestamp;
+            Version = evt.Version;
         }
     }
 }

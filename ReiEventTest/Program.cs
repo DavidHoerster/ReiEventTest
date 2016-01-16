@@ -60,29 +60,20 @@ namespace ReiEventTest
                         break;
 
                     case "S":
-                        Console.WriteLine("Current validation status for all controls...");
-
-                        var status = instance.GetStatus();
-                        foreach (var stat in status)
-                        {
-                            Console.WriteLine($"{stat.ControlId} {stat.State} {stat.Validator} {stat.Message}");
-                        }
-                        Console.WriteLine("");
-
-                        Console.WriteLine("Current answers for all controls...");
-
-                        var answers = instance.GetAnswers();
-                        foreach (var answer in answers)
-                        {
-                            Console.WriteLine($"{answer.ControlId} has value(s) {String.Join(", ", answer.Values)} with timestamp {answer.Timestamp}");
-                        }
-                        Console.WriteLine("");
+                        DisplayDomainStatus(instance);
                         break;
                     case "P":
                         PersistEvents(coll, instance);
 
                         Console.WriteLine("PERSISTED!");
                         Console.WriteLine("");
+                        break;
+                    case "V":
+                        rei = cmdParts[1];
+                        var ver = Int64.Parse(cmdParts[2]);
+                        instance = LoadDomainUpToVersion(coll, formId, rei, ver, catalog);
+                        Console.WriteLine($"Form ID {formId} REI ID {rei} loaded!!");
+                        DisplayDomainStatus(instance);
                         break;
                     case "C":
                         PrintInstructions();
@@ -94,10 +85,42 @@ namespace ReiEventTest
             }
         }
 
+        private static void DisplayDomainStatus(ReportingEntityInstance instance)
+        {
+            Console.WriteLine("Current validation status for all controls...");
+
+            var status = instance.GetStatus();
+            foreach (var stat in status)
+            {
+                Console.WriteLine($"{stat.ControlId} {stat.State} {stat.Validator} {stat.Message}");
+            }
+            Console.WriteLine("");
+
+            Console.WriteLine("Current answers for all controls...");
+
+            var answers = instance.GetAnswers();
+            foreach (var answer in answers)
+            {
+                Console.WriteLine($"{answer.ControlId} has value(s) {String.Join(", ", answer.Values)} with timestamp {answer.Timestamp}");
+            }
+            Console.WriteLine("");
+        }
+
         private static ReportingEntityInstance LoadDomain(IMongoCollection<ReiEventBase> coll, Guid formId, string rei, ControlCatalog catalog)
         {
             var instance = new ReportingEntityInstance(formId, rei, catalog);
             var events = coll.Find<ReiEventBase>(veb => veb.FormId == formId && veb.ReportingEntityInstanceId == rei)
+                             .SortBy(veb => veb.Version);
+            instance.LoadFromHistory(events.ToEnumerable());
+            return instance;
+        }
+
+        private static ReportingEntityInstance LoadDomainUpToVersion(IMongoCollection<ReiEventBase> coll, Guid formId, String rei, Int64 maxVersion, ControlCatalog catalog)
+        {
+            var instance = new ReportingEntityInstance(formId, rei, catalog);
+            var events = coll.Find<ReiEventBase>(veb => veb.FormId == formId && 
+                                                        veb.ReportingEntityInstanceId == rei &&
+                                                        veb.Version <= maxVersion)
                              .SortBy(veb => veb.Version);
             instance.LoadFromHistory(events.ToEnumerable());
             return instance;
@@ -127,6 +150,7 @@ namespace ReiEventTest
             Console.WriteLine(" [P]ERSIST");
             Console.WriteLine(" [S]TATUS");
             Console.WriteLine(" [F]AILURES");
+            Console.WriteLine(" [V]ERSION <VERSION>");
             Console.WriteLine(" [C]OMMANDS");
             Console.WriteLine(" [Q]UIT");
 

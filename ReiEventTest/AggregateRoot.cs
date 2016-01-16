@@ -28,6 +28,7 @@ namespace ReiEventTest
         public void LoadFromHistory(IEnumerable<EventBase> events)
         {
             foreach (var @event in events) ApplyChange(@event, false);
+            Version = DateTime.UtcNow.Ticks;
         }
 
         protected void ApplyChange(EventBase @event)

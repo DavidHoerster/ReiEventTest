@@ -25,7 +25,7 @@ namespace ReiEventTest
             _controlStatus = new Dictionary<String, ControlValidatorStatus>();
             _controlAnswers = new Dictionary<String, ControlAnswer>();
 
-            Version = DateTime.UtcNow.Ticks;
+            //Version = DateTime.UtcNow.Ticks;
         }
 
         public void AddAnswer(String controlId, params Object[] answers)
@@ -140,6 +140,7 @@ namespace ReiEventTest
                 };
                 _controlStatus.Add(key, item);
             }
+            Version = evt.Timestamp;
         }
 
         private void Apply(ValidationPassed evt)
@@ -166,6 +167,7 @@ namespace ReiEventTest
                 };
                 _controlStatus.Add(key, item);
             }
+            Version = evt.Timestamp;
         }
 
         private void Apply(ControlAnswered evt)
@@ -189,6 +191,7 @@ namespace ReiEventTest
                 };
                 _controlAnswers.Add(key, item);
             }
+            Version = evt.Timestamp;
         }
     }
 }

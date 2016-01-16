@@ -180,7 +180,7 @@ namespace ReiEventTest
                 cm.SetIsRootClass(true);
             });
 
-            var client = new MongoClient("mongodb://localhost:27017");
+            var client = new MongoClient("mongodb://localhost:27020");
             var db = client.GetDatabase("Events");
             var coll = db.GetCollection<ReiEventBase>("Validations");
 

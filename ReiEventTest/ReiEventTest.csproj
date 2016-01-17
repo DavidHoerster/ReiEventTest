@@ -72,6 +72,7 @@
     <Compile Include="AggregateRoot.cs" />
     <Compile Include="ControlAnswer.cs" />
     <Compile Include="ControlValidatorStatus.cs" />
+    <Compile Include="EventStore.cs" />
     <Compile Include="Events\ControlAnswered.cs" />
     <Compile Include="Events\ControlFieldEventBase.cs" />
     <Compile Include="Events\ReiEventBase.cs" />

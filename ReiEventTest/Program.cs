@@ -109,36 +109,28 @@ namespace ReiEventTest
         private static ReportingEntityInstance LoadDomain(IMongoCollection<ReiEventBase> coll, Guid formId, string rei, ControlCatalog catalog)
         {
             var instance = new ReportingEntityInstance(formId, rei, catalog);
-            var events = coll.Find<ReiEventBase>(veb => veb.FormId == formId && veb.ReportingEntityInstanceId == rei)
-                             .SortBy(veb => veb.Version);
-            instance.LoadFromHistory(events.ToEnumerable());
+            EventStore.LoadDomain(coll, instance, formId, rei);
             return instance;
         }
 
         private static ReportingEntityInstance LoadDomainUpToVersion(IMongoCollection<ReiEventBase> coll, Guid formId, String rei, Int64 maxVersion, ControlCatalog catalog)
         {
             var instance = new ReportingEntityInstance(formId, rei, catalog);
-            var events = coll.Find<ReiEventBase>(veb => veb.FormId == formId && 
-                                                        veb.ReportingEntityInstanceId == rei &&
-                                                        veb.Version <= maxVersion)
-                             .SortBy(veb => veb.Version);
-            instance.LoadFromHistory(events.ToEnumerable());
+            EventStore.LoadDomainUpToVersion(coll, instance, formId, rei, maxVersion);
             return instance;
         }
 
         private static void PersistEvents(IMongoCollection<ReiEventBase> coll, ReportingEntityInstance instance)
         {
-            var validations = instance.GetUncommittedChanges();
-            coll.InsertMany(validations.OfType<ReiEventBase>());
-            instance.MarkChangesAsCommitted();
+            EventStore.PersistEvents(coll, instance);
         }
 
         private static IEnumerable<ControlAnswered> GetControlAnswerHistory(IMongoCollection<ReiEventBase> coll, Guid formId, String rei, String controlId)
         {
-            return coll.OfType<ControlAnswered>()
-                                .Find<ControlAnswered>(c => c.FormId == formId && c.ReportingEntityInstanceId == rei && c.ControlId == controlId)
-                                .SortBy(c => c.Version)
-                                .ToEnumerable();
+            return EventStore.GetControlAnswerHistory<ControlAnswered>(
+                                coll, 
+                                c => c.FormId == formId && c.ReportingEntityInstanceId == rei && c.ControlId == controlId, 
+                                c => c.Version);
         }
 
         private static void PrintInstructions()

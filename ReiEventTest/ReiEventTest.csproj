@@ -79,10 +79,12 @@
     <Compile Include="Events\ValidationEventBase.cs" />
     <Compile Include="Events\ValidationFailed.cs" />
     <Compile Include="Events\ValidationPassed.cs" />
+    <Compile Include="ICanSnapshot.cs" />
     <Compile Include="Infrastructure.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ReportingEntityInstance.cs" />
+    <Compile Include="Snapshot.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

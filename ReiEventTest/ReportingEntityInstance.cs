@@ -9,26 +9,32 @@ using System.Threading.Tasks;
 
 namespace ReiEventTest
 {
-    public class ReportingEntityInstance : AggregateRoot
+    public class ReportingEntityInstance : AggregateRoot, ICanSnapshot
     {
-        public readonly String ReportingEntityId;
-        public readonly Guid FormDefinitionId;
-        private IDictionary<String, ControlValidatorStatus> _controlStatus;
-        private IDictionary<String, ControlAnswer> _controlAnswers;
-        private readonly ControlCatalog Catalog;
+        //public readonly String ReportingEntityId;
+        //public readonly Guid FormDefinitionId;
+        //private IDictionary<String, ControlValidatorStatus> _controlStatus;
+        //private IDictionary<String, ControlAnswer> _controlAnswers;
+        //private readonly ControlCatalog Catalog;
 
-        public ReportingEntityInstance(Guid formId, String reportingid, ControlCatalog controlCatalog)
+        public ReportingEntityInstance(Guid formId, String reportingid) //, ControlCatalog controlCatalog)
         {
             FormDefinitionId = formId;
             ReportingEntityId = reportingid;
-            Catalog = controlCatalog;
-            _controlStatus = new Dictionary<String, ControlValidatorStatus>();
-            _controlAnswers = new Dictionary<String, ControlAnswer>();
+            //Catalog = controlCatalog;
+            ControlStatus = new Dictionary<String, ControlValidatorStatus>();
+            ControlAnswers = new Dictionary<String, ControlAnswer>();
 
             //Version = DateTime.UtcNow.Ticks;
         }
 
-        public void AddAnswer(String controlId, params Object[] answers)
+        public IDictionary<String, ControlValidatorStatus> ControlStatus { get; private set; }
+        public IDictionary<String, ControlAnswer> ControlAnswers { get; private set; }
+        public String ReportingEntityId { get; private set; }
+        public Guid FormDefinitionId { get; private set; }
+        //public ControlCatalog Catalog { get; private set; }
+
+        public void AddAnswer(String controlId, ControlCatalog catalog, params Object[] answers)
         {
             var date = DateTime.UtcNow;
             ApplyChange(new ControlAnswered
@@ -42,7 +48,7 @@ namespace ReiEventTest
                 Values = answers,
             });
 
-            var msgs = ValidateAnswers(controlId, answers);
+            var msgs = ValidateAnswers(controlId, catalog, answers);
             foreach (var msg in msgs)
             {
                 if (msg.IsValid)
@@ -80,24 +86,24 @@ namespace ReiEventTest
 
         public IEnumerable<ControlValidatorStatus> GetFailingControls()
         {
-            return _controlStatus.Where(c => c.Value.State == false)
+            return ControlStatus.Where(c => c.Value.State == false)
                                     .Select(c => c.Value);
         }
 
         public IEnumerable<ControlAnswer> GetAnswers()
         {
-            return _controlAnswers.Select(a => a.Value);
+            return ControlAnswers.Select(a => a.Value);
         }
 
         public IEnumerable<ControlValidatorStatus> GetStatus()
         {
-            return _controlStatus.Select(c => c.Value);
+            return ControlStatus.Select(c => c.Value);
         }
 
-        private IEnumerable<ValidationMessage> ValidateAnswers(String controlId, Object[] answers)
+        private IEnumerable<ValidationMessage> ValidateAnswers(String controlId, ControlCatalog catalog, Object[] answers)
         {
             var msgs = new List<ValidationMessage>();
-            var control = Catalog.ControlFields.FirstOrDefault(c => c.Name.Equals(controlId, StringComparison.OrdinalIgnoreCase));
+            var control = catalog.ControlFields.FirstOrDefault(c => c.Name.Equals(controlId, StringComparison.OrdinalIgnoreCase));
             if (control == null)
             {
                 //not found
@@ -107,7 +113,7 @@ namespace ReiEventTest
             {
                 foreach (var answer in answers)
                 {
-                    var msg = val.Validate(Catalog.Id, answer);
+                    var msg = val.Validate(catalog.Id, answer);
                     msg.Message.ObjectName = val.GetType().Name;
                     msgs.Add(msg);
                 }
@@ -119,9 +125,9 @@ namespace ReiEventTest
         private void Apply(ValidationFailed evt)
         {
             var key = $"{evt.ControlId}-{evt.Validator}";
-            if (_controlStatus.ContainsKey(key))
+            if (ControlStatus.ContainsKey(key))
             {
-                var item = _controlStatus[key];
+                var item = ControlStatus[key];
                 item.Values = evt.Values;
                 item.State = false;
                 item.Message = evt.Message;
@@ -138,7 +144,7 @@ namespace ReiEventTest
                     Values = evt.Values,
                     Validator = evt.Validator
                 };
-                _controlStatus.Add(key, item);
+                ControlStatus.Add(key, item);
             }
             Version = evt.Version;
         }
@@ -146,9 +152,9 @@ namespace ReiEventTest
         private void Apply(ValidationPassed evt)
         {
             var key = $"{evt.ControlId}-{evt.Validator}";
-            if (_controlStatus.ContainsKey(key))
+            if (ControlStatus.ContainsKey(key))
             {
-                var item = _controlStatus[key];
+                var item = ControlStatus[key];
                 item.Values = evt.Values;
                 item.State = true;
                 item.Message = evt.Message;
@@ -165,7 +171,7 @@ namespace ReiEventTest
                     Values = evt.Values,
                     Validator = evt.Validator
                 };
-                _controlStatus.Add(key, item);
+                ControlStatus.Add(key, item);
             }
             Version = evt.Version;
         }
@@ -173,9 +179,9 @@ namespace ReiEventTest
         private void Apply(ControlAnswered evt)
         {
             var key = evt.ControlId;
-            if (_controlAnswers.ContainsKey(key))
+            if (ControlAnswers.ContainsKey(key))
             {
-                var item = _controlAnswers[key];
+                var item = ControlAnswers[key];
                 item.Values = evt.Values;
                 item.Date = evt.Date;
                 item.Timestamp = evt.Version;
@@ -189,9 +195,25 @@ namespace ReiEventTest
                     Timestamp = evt.Version,
                     Values = evt.Values
                 };
-                _controlAnswers.Add(key, item);
+                ControlAnswers.Add(key, item);
             }
             Version = evt.Version;
+        }
+
+        public Snapshot TakeSnapshot()
+        {
+            return new Snapshot(Guid.NewGuid(), ReportingEntityId, Version, new Dictionary<String, Object>
+            {
+                { "answers", ControlAnswers },
+                { "status", ControlStatus }
+            });
+        }
+
+        public void LoadSnapshot(Snapshot snap)
+        {
+            Version = snap.Version;
+            ControlAnswers = snap.State["answers"] as Dictionary<String, ControlAnswer>;
+            ControlStatus = snap.State["status"] as Dictionary<String, ControlValidatorStatus>;
         }
     }
 }

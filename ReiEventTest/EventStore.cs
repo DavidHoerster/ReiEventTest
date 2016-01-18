@@ -28,6 +28,15 @@ namespace ReiEventTest
             root.LoadFromHistory(events.ToEnumerable());
         }
 
+        public static void LoadDomainStartingAtVersion(IMongoCollection<ReiEventBase> coll, AggregateRoot root, Guid formId, String rei, Int64 version)
+        {
+            var events = coll.Find<ReiEventBase>(veb => veb.FormId == formId &&
+                                                    veb.ReportingEntityInstanceId == rei &&
+                                                    veb.Version > version)
+                             .SortBy(veb => veb.Version);
+            root.LoadFromHistory(events.ToEnumerable());
+        }
+
         public static Boolean PersistEvents(IMongoCollection<ReiEventBase> coll, AggregateRoot root)
         {
             var validations = root.GetUncommittedChanges();
@@ -45,6 +54,20 @@ namespace ReiEventTest
                         .Find<T>(filter)
                         .SortBy(sortBy)
                         .ToEnumerable();
+        }
+
+        public static void TakeSnapshot(IMongoCollection<Snapshot> coll, Snapshot snap)
+        {
+            coll.InsertOne(snap);
+        }
+
+        public static Snapshot GetSnapshot(IMongoCollection<Snapshot> coll, String id)
+        {
+            return coll
+                .Find(s => s.RootId == id)
+                .SortByDescending(r => r.Version)
+                .ToEnumerable()
+                .FirstOrDefault();
         }
 
     }

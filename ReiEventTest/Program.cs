@@ -9,14 +9,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace ReiEventTest
 {
     class Program
     {
+        static IMongoCollection<ReiEventBase> _eventCollection;
+        static IMongoCollection<Snapshot> _snapshotCollection;
+
         static void Main(string[] args)
         {
-            var coll = SetupMongoMaps();
+            SetupMongoMaps();
 
             var formId = new Guid("cca74fb0-87ae-4e42-8d48-7865de6f130c");
             ReportingEntityInstance instance = null;
@@ -36,7 +40,7 @@ namespace ReiEventTest
                         return;
                         break;
                     case "H":
-                        var history = GetControlAnswerHistory(coll, formId, rei, cmdParts[1]);
+                        var history = GetControlAnswerHistory(_eventCollection, formId, rei, cmdParts[1]);
                         var controlName = catalog.ControlFields.FirstOrDefault(c => c.Name.Equals(cmdParts[1], StringComparison.OrdinalIgnoreCase)).Name;
                         Console.WriteLine($"History of {controlName}");
                         foreach (var item in history)
@@ -46,7 +50,7 @@ namespace ReiEventTest
                         break;
                     case "L":
                         rei = cmdParts[1];
-                        instance = LoadDomain(coll, formId, rei, catalog);
+                        instance = LoadDomain(_eventCollection, formId, rei, catalog);
                         Console.WriteLine($"Form ID {formId} REI ID {rei} loaded!!");
                         break;
                     case "F":
@@ -62,16 +66,43 @@ namespace ReiEventTest
                     case "S":
                         DisplayDomainStatus(instance);
                         break;
+                    case "SN":
+                        TakeSnapshot(_snapshotCollection, instance);
+                        break;
+                    case "LS":
+                        instance = LoadFromSnapshot(_snapshotCollection, formId, cmdParts[1]);
+                        break;
                     case "P":
-                        PersistEvents(coll, instance);
+                        PersistEvents(_eventCollection, instance);
+                        break;
+                    case "T":
+                        Stopwatch sw = new Stopwatch();
 
-                        Console.WriteLine("PERSISTED!");
-                        Console.WriteLine("");
+                        Console.WriteLine($"Loading REI {cmdParts[1]} with events 100 times is ");
+                        sw.Start();
+                        for (int i = 0; i < 100; i++)
+                        {
+                            instance = LoadDomain(_eventCollection, formId, cmdParts[1], catalog);
+                        }
+                        sw.Stop();
+                        Console.WriteLine($"{sw.ElapsedMilliseconds} ms");
+
+                        Console.WriteLine($"Loading REI {cmdParts[1]} from snapshot 100 times is ");
+
+                        sw.Reset();
+                        sw.Start();
+                        for (int i = 0; i < 100; i++)
+                        {
+                            instance = LoadFromSnapshot(_snapshotCollection, formId, cmdParts[1]);
+                        }
+                        sw.Stop();
+
+                        Console.WriteLine($"{sw.ElapsedMilliseconds} ms");
                         break;
                     case "V":
                         rei = cmdParts[1];
                         var ver = Int64.Parse(cmdParts[2]);
-                        instance = LoadDomainUpToVersion(coll, formId, rei, ver, catalog);
+                        instance = LoadDomainUpToVersion(_eventCollection, formId, rei, ver, catalog);
                         Console.WriteLine($"Form ID {formId} REI ID {rei} loaded!!");
                         DisplayDomainStatus(instance);
                         break;
@@ -79,10 +110,25 @@ namespace ReiEventTest
                         PrintInstructions();
                         break;
                     default:
-                        instance.AddAnswer(cmdParts[0], cmdParts.Skip(1).ToArray());
+                        instance.AddAnswer(cmdParts[0], catalog, cmdParts.Skip(1).ToArray());
                         break;
                 }
             }
+        }
+
+        private static void TakeSnapshot(IMongoCollection<Snapshot> coll, ICanSnapshot snap)
+        {
+            var shot = snap.TakeSnapshot();
+            EventStore.TakeSnapshot(coll, shot);
+        }
+
+        private static ReportingEntityInstance LoadFromSnapshot(IMongoCollection<Snapshot> coll, Guid formId, String rei)
+        {
+            var snapshot = EventStore.GetSnapshot(coll, rei);
+            var instance = new ReportingEntityInstance(formId, rei);
+            instance.LoadSnapshot(snapshot);
+            EventStore.LoadDomainStartingAtVersion(_eventCollection, instance, instance.FormDefinitionId, instance.ReportingEntityId, instance.Version);
+            return instance;
         }
 
         private static void DisplayDomainStatus(ReportingEntityInstance instance)
@@ -108,14 +154,14 @@ namespace ReiEventTest
 
         private static ReportingEntityInstance LoadDomain(IMongoCollection<ReiEventBase> coll, Guid formId, string rei, ControlCatalog catalog)
         {
-            var instance = new ReportingEntityInstance(formId, rei, catalog);
+            var instance = new ReportingEntityInstance(formId, rei);
             EventStore.LoadDomain(coll, instance, formId, rei);
             return instance;
         }
 
         private static ReportingEntityInstance LoadDomainUpToVersion(IMongoCollection<ReiEventBase> coll, Guid formId, String rei, Int64 maxVersion, ControlCatalog catalog)
         {
-            var instance = new ReportingEntityInstance(formId, rei, catalog);
+            var instance = new ReportingEntityInstance(formId, rei);
             EventStore.LoadDomainUpToVersion(coll, instance, formId, rei, maxVersion);
             return instance;
         }
@@ -123,6 +169,9 @@ namespace ReiEventTest
         private static void PersistEvents(IMongoCollection<ReiEventBase> coll, ReportingEntityInstance instance)
         {
             EventStore.PersistEvents(coll, instance);
+
+            Console.WriteLine("PERSISTED!");
+            Console.WriteLine("");
         }
 
         private static IEnumerable<ControlAnswered> GetControlAnswerHistory(IMongoCollection<ReiEventBase> coll, Guid formId, String rei, String controlId)
@@ -140,6 +189,9 @@ namespace ReiEventTest
             Console.WriteLine(" [H]ISTORY <CTRL_ID>");
             Console.WriteLine(" [L]OAD <REI>");
             Console.WriteLine(" [P]ERSIST");
+            Console.WriteLine(" TAKE [SN]APSHOT");
+            Console.WriteLine(" [LS] LoadSnapshot <REI>");
+            Console.WriteLine(" [T]IME TEST Loading All Events and Snapshot for <REI>");
             Console.WriteLine(" [S]TATUS");
             Console.WriteLine(" [F]AILURES");
             Console.WriteLine(" [V]ERSION <VERSION>");
@@ -181,7 +233,7 @@ namespace ReiEventTest
             return catalog;
         }
 
-        private static IMongoCollection<ReiEventBase> SetupMongoMaps()
+        private static void SetupMongoMaps()
         {
             BsonClassMap.RegisterClassMap<EventBase>(cm =>
             {
@@ -196,11 +248,20 @@ namespace ReiEventTest
                 cm.SetIsRootClass(true);
             });
 
+            BsonClassMap.RegisterClassMap<AggregateRoot>(cm =>
+            {
+                cm.AutoMap();
+                cm.AddKnownType(typeof(ReportingEntityInstance));
+
+                cm.SetIsRootClass(true);
+            });
+
             var client = new MongoClient("mongodb://localhost:27020");
             var db = client.GetDatabase("Events");
-            var coll = db.GetCollection<ReiEventBase>("Validations");
+            _eventCollection = db.GetCollection<ReiEventBase>("Validations");
+            _snapshotCollection = db.GetCollection<Snapshot>("Snapshots");
 
-            return coll;
+            //return coll;
         }
     }
 }

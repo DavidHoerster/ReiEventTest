@@ -11,7 +11,7 @@ namespace ReiEventTest
 {
     public class ReportingEntityInstance : AggregateRoot, ICanSnapshot
     {
-        public ReportingEntityInstance(Guid formId, String reportingid) //, ControlCatalog controlCatalog)
+        public ReportingEntityInstance(Guid formId, String reportingid)
         {
             FormDefinitionId = formId;
             ReportingEntityId = reportingid;

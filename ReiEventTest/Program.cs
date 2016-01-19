@@ -208,12 +208,14 @@ namespace ReiEventTest
                 new ControlField("FirstName", new List<String>(), new List<IControlValidator>
                 {
                     new RequiredValidator(),
-                    new MaxLengthValidator(new Dictionary<String, Object> { {"maxLength", 10 } })
+                    new MaxLengthValidator(new Dictionary<String, Object> { {"maxLength", 10 } }),
+                    new MinLengthValidator(new Dictionary<string, object> { { "minLength", 1 } }),
                 }, "String"),
                 new ControlField("LastName", new List<String>(), new List<IControlValidator>
                 {
                     new RequiredValidator(),
-                    new MaxLengthValidator(new Dictionary<String, Object> { {"maxLength", 40 } })
+                    new MaxLengthValidator(new Dictionary<String, Object> { {"maxLength", 40 } }),
+                    new MinLengthValidator(new Dictionary<string, object> { { "minLength", 3 } }),
                 }, "String"),
                 new ControlField("Age", new List<String>(), new List<IControlValidator>
                 {
@@ -226,7 +228,8 @@ namespace ReiEventTest
                 }, "String"),
                 new ControlField("FavoriteFood", new List<String>(), new List<IControlValidator>
                 {
-                    new MaxLengthValidator(new Dictionary<String, Object> { {"maxLength", 40 } })
+                    new MaxLengthValidator(new Dictionary<String, Object> { {"maxLength", 40 } }),
+                    new MinLengthValidator(new Dictionary<string, object> { { "minLength", 2 } }),
                 }, "String"),
             });
 

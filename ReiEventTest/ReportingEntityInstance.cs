@@ -11,28 +11,18 @@ namespace ReiEventTest
 {
     public class ReportingEntityInstance : AggregateRoot, ICanSnapshot
     {
-        //public readonly String ReportingEntityId;
-        //public readonly Guid FormDefinitionId;
-        //private IDictionary<String, ControlValidatorStatus> _controlStatus;
-        //private IDictionary<String, ControlAnswer> _controlAnswers;
-        //private readonly ControlCatalog Catalog;
-
         public ReportingEntityInstance(Guid formId, String reportingid) //, ControlCatalog controlCatalog)
         {
             FormDefinitionId = formId;
             ReportingEntityId = reportingid;
-            //Catalog = controlCatalog;
             ControlStatus = new Dictionary<String, ControlValidatorStatus>();
             ControlAnswers = new Dictionary<String, ControlAnswer>();
-
-            //Version = DateTime.UtcNow.Ticks;
         }
 
         public IDictionary<String, ControlValidatorStatus> ControlStatus { get; private set; }
         public IDictionary<String, ControlAnswer> ControlAnswers { get; private set; }
         public String ReportingEntityId { get; private set; }
         public Guid FormDefinitionId { get; private set; }
-        //public ControlCatalog Catalog { get; private set; }
 
         public void AddAnswer(String controlId, ControlCatalog catalog, params Object[] answers)
         {

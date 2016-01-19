@@ -40,7 +40,7 @@ namespace ReiEventTest
                         return;
                         break;
                     case "H":
-                        var history = GetControlAnswerHistory(_eventCollection, formId, rei, cmdParts[1]);
+                        var history = GetControlAnswerHistory(formId, rei, cmdParts[1]);
                         var controlName = catalog.ControlFields.FirstOrDefault(c => c.Name.Equals(cmdParts[1], StringComparison.OrdinalIgnoreCase)).Name;
                         Console.WriteLine($"History of {controlName}");
                         foreach (var item in history)
@@ -50,7 +50,7 @@ namespace ReiEventTest
                         break;
                     case "L":
                         rei = cmdParts[1];
-                        instance = LoadDomain(_eventCollection, formId, rei, catalog);
+                        instance = LoadDomain(formId, rei, catalog);
                         Console.WriteLine($"Form ID {formId} REI ID {rei} loaded!!");
                         break;
                     case "F":
@@ -67,13 +67,13 @@ namespace ReiEventTest
                         DisplayDomainStatus(instance);
                         break;
                     case "SN":
-                        TakeSnapshot(_snapshotCollection, instance);
+                        TakeSnapshot(instance);
                         break;
                     case "LS":
-                        instance = LoadFromSnapshot(_snapshotCollection, formId, cmdParts[1]);
+                        instance = LoadFromSnapshot(formId, cmdParts[1]);
                         break;
                     case "P":
-                        PersistEvents(_eventCollection, instance);
+                        PersistEvents(instance);
                         break;
                     case "T":
                         Stopwatch sw = new Stopwatch();
@@ -82,7 +82,7 @@ namespace ReiEventTest
                         sw.Start();
                         for (int i = 0; i < 100; i++)
                         {
-                            instance = LoadDomain(_eventCollection, formId, cmdParts[1], catalog);
+                            instance = LoadDomain(formId, cmdParts[1], catalog);
                         }
                         sw.Stop();
                         Console.WriteLine($"{sw.ElapsedMilliseconds} ms");
@@ -93,7 +93,7 @@ namespace ReiEventTest
                         sw.Start();
                         for (int i = 0; i < 100; i++)
                         {
-                            instance = LoadFromSnapshot(_snapshotCollection, formId, cmdParts[1]);
+                            instance = LoadFromSnapshot(formId, cmdParts[1]);
                         }
                         sw.Stop();
 
@@ -102,7 +102,7 @@ namespace ReiEventTest
                     case "V":
                         rei = cmdParts[1];
                         var ver = Int64.Parse(cmdParts[2]);
-                        instance = LoadDomainUpToVersion(_eventCollection, formId, rei, ver, catalog);
+                        instance = LoadDomainUpToVersion(formId, rei, ver, catalog);
                         Console.WriteLine($"Form ID {formId} REI ID {rei} loaded!!");
                         DisplayDomainStatus(instance);
                         break;
@@ -116,15 +116,15 @@ namespace ReiEventTest
             }
         }
 
-        private static void TakeSnapshot(IMongoCollection<Snapshot> coll, ICanSnapshot snap)
+        private static void TakeSnapshot(ICanSnapshot snap)
         {
             var shot = snap.TakeSnapshot();
-            EventStore.TakeSnapshot(coll, shot);
+            EventStore.TakeSnapshot(_snapshotCollection, shot);
         }
 
-        private static ReportingEntityInstance LoadFromSnapshot(IMongoCollection<Snapshot> coll, Guid formId, String rei)
+        private static ReportingEntityInstance LoadFromSnapshot(Guid formId, String rei)
         {
-            var snapshot = EventStore.GetSnapshot(coll, rei);
+            var snapshot = EventStore.GetSnapshot(_snapshotCollection, rei);
             var instance = new ReportingEntityInstance(formId, rei);
             instance.LoadSnapshot(snapshot);
             EventStore.LoadDomainStartingAtVersion(_eventCollection, instance, instance.FormDefinitionId, instance.ReportingEntityId, instance.Version);
@@ -152,32 +152,32 @@ namespace ReiEventTest
             Console.WriteLine("");
         }
 
-        private static ReportingEntityInstance LoadDomain(IMongoCollection<ReiEventBase> coll, Guid formId, string rei, ControlCatalog catalog)
+        private static ReportingEntityInstance LoadDomain(Guid formId, string rei, ControlCatalog catalog)
         {
             var instance = new ReportingEntityInstance(formId, rei);
-            EventStore.LoadDomain(coll, instance, formId, rei);
+            EventStore.LoadDomain(_eventCollection, instance, formId, rei);
             return instance;
         }
 
-        private static ReportingEntityInstance LoadDomainUpToVersion(IMongoCollection<ReiEventBase> coll, Guid formId, String rei, Int64 maxVersion, ControlCatalog catalog)
+        private static ReportingEntityInstance LoadDomainUpToVersion(Guid formId, String rei, Int64 maxVersion, ControlCatalog catalog)
         {
             var instance = new ReportingEntityInstance(formId, rei);
-            EventStore.LoadDomainUpToVersion(coll, instance, formId, rei, maxVersion);
+            EventStore.LoadDomainUpToVersion(_eventCollection, instance, formId, rei, maxVersion);
             return instance;
         }
 
-        private static void PersistEvents(IMongoCollection<ReiEventBase> coll, ReportingEntityInstance instance)
+        private static void PersistEvents(ReportingEntityInstance instance)
         {
-            EventStore.PersistEvents(coll, instance);
+            EventStore.PersistEvents(_eventCollection, instance);
 
             Console.WriteLine("PERSISTED!");
             Console.WriteLine("");
         }
 
-        private static IEnumerable<ControlAnswered> GetControlAnswerHistory(IMongoCollection<ReiEventBase> coll, Guid formId, String rei, String controlId)
+        private static IEnumerable<ControlAnswered> GetControlAnswerHistory(Guid formId, String rei, String controlId)
         {
             return EventStore.GetControlAnswerHistory<ControlAnswered>(
-                                coll, 
+                                _eventCollection, 
                                 c => c.FormId == formId && c.ReportingEntityInstanceId == rei && c.ControlId == controlId, 
                                 c => c.Version);
         }
@@ -256,12 +256,10 @@ namespace ReiEventTest
                 cm.SetIsRootClass(true);
             });
 
-            var client = new MongoClient("mongodb://localhost:27020");
+            var client = new MongoClient("mongodb://localhost:27017");
             var db = client.GetDatabase("Events");
             _eventCollection = db.GetCollection<ReiEventBase>("Validations");
             _snapshotCollection = db.GetCollection<Snapshot>("Snapshots");
-
-            //return coll;
         }
     }
 }

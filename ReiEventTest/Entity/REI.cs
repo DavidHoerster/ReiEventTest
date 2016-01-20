@@ -8,18 +8,24 @@ namespace ReiEventTest.Entity
 {
     public class Answer
     {
-        public Guid ControlId { get; private set; }
-        public String Path { get; private set; }
+        public String ControlId { get; private set; }
         public Object[] Values { get; private set; }
+
+        public Answer(String id, Object[] vals)
+        {
+            ControlId = id; Values = vals;
+        }
     }
 
     public class REI
     {
-        public Guid Id { get; private set; }
-        public Guid FormInstanceId { get; private set; }
-        public Guid ReportingEntityId { get; private set; }
-        public Guid ReportingEntityTypeId { get; private set; }
-        public String ReportingEntityDisplayName { get; private set; }
+        public String Id { get; private set; }
+        public Guid FormId { get; private set; }
         public IEnumerable<Answer> Answers { get; private set; }
+
+        public REI(String id, Guid formId, IEnumerable<Answer> answers)
+        {
+            Id = id; FormId = formId; Answers = answers;
+        }
     }
 }

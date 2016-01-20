@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using ReiEventTest.Entity;
 
 namespace ReiEventTest
 {
@@ -17,6 +18,7 @@ namespace ReiEventTest
     {
         static IMongoCollection<ReiEventBase> _eventCollection;
         static IMongoCollection<Snapshot> _snapshotCollection;
+        static IMongoCollection<REI> _reiProjection;
 
         static void Main(string[] args)
         {
@@ -169,8 +171,11 @@ namespace ReiEventTest
         private static void PersistEvents(ReportingEntityInstance instance)
         {
             EventStore.PersistEvents(_eventCollection, instance);
-
             Console.WriteLine("PERSISTED!");
+
+            EventProjector.ProjectReiAnswer(_reiProjection, instance);
+            Console.WriteLine("PROJECTED");
+
             Console.WriteLine("");
         }
 
@@ -259,10 +264,11 @@ namespace ReiEventTest
                 cm.SetIsRootClass(true);
             });
 
-            var client = new MongoClient("mongodb://localhost:27017");
+            var client = new MongoClient("mongodb://localhost:27020");
             var db = client.GetDatabase("Events");
             _eventCollection = db.GetCollection<ReiEventBase>("Validations");
             _snapshotCollection = db.GetCollection<Snapshot>("Snapshots");
+            _reiProjection = db.GetCollection<REI>("ReportingEntityInstance");
         }
     }
 }

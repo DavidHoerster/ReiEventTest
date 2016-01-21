@@ -80,20 +80,22 @@ namespace ReiEventTest
                     case "T":
                         Stopwatch sw = new Stopwatch();
 
-                        Console.WriteLine($"Loading REI {cmdParts[1]} with events 100 times is ");
+                        var iters = cmdParts.Length > 2 ? Int32.Parse(cmdParts[2]) : 100;
+
+                        Console.WriteLine($"Loading REI {cmdParts[1]} with events {iters} times is ");
                         sw.Start();
-                        for (int i = 0; i < 100; i++)
+                        for (int i = 0; i < iters; i++)
                         {
                             instance = LoadDomain(formId, cmdParts[1], catalog);
                         }
                         sw.Stop();
                         Console.WriteLine($"{sw.ElapsedMilliseconds} ms");
 
-                        Console.WriteLine($"Loading REI {cmdParts[1]} from snapshot 100 times is ");
+                        Console.WriteLine($"Loading REI {cmdParts[1]} from snapshot {iters} times is ");
 
                         sw.Reset();
                         sw.Start();
-                        for (int i = 0; i < 100; i++)
+                        for (int i = 0; i < iters; i++)
                         {
                             instance = LoadFromSnapshot(formId, cmdParts[1]);
                         }
@@ -247,7 +249,7 @@ namespace ReiEventTest
             Console.WriteLine(" [P]ERSIST");
             Console.WriteLine(" TAKE [SN]APSHOT");
             Console.WriteLine(" [LS] LoadSnapshot <REI>");
-            Console.WriteLine(" [T]IME TEST Loading All Events and Snapshot for <REI>");
+            Console.WriteLine(" [T]IME TEST Loading All Events and Snapshot for <REI> [<ITERATIONS> = 100]");
             Console.WriteLine(" [S]TATUS");
             Console.WriteLine(" [F]AILURES");
             Console.WriteLine(" [PERF] <REI> <SNAP_INT> Load up a REI with 10000 events snapshotting every SNAP_INT event");

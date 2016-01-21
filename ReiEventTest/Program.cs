@@ -101,6 +101,9 @@ namespace ReiEventTest
 
                         Console.WriteLine($"{sw.ElapsedMilliseconds} ms");
                         break;
+                    case "PERF":
+                        PerfLoadNewRei(formId, cmdParts[1], Int32.Parse(cmdParts[2]), catalog);
+                        break;
                     case "V":
                         rei = cmdParts[1];
                         var ver = Int64.Parse(cmdParts[2]);
@@ -187,6 +190,54 @@ namespace ReiEventTest
                                 c => c.Version);
         }
 
+        private static void PerfLoadNewRei(Guid formId, String rei, Int32 snapInterval, ControlCatalog catalog)
+        {
+            var newInstance = new ReportingEntityInstance(formId, rei);
+            var fields = new String[]{ "FirstName", "LastName", "Age", "Email", "FavoriteFood" };
+
+            Stopwatch sw = new Stopwatch();
+
+            Console.WriteLine($"Starting the creation of {rei}");
+            sw.Start();
+            for (int i = 0; i < 10000; i++)
+            {
+                var field = fields[i % 5];
+                newInstance.AddAnswer(field, catalog, "answer" + i.ToString());
+
+                EventStore.PersistEvents(_eventCollection, newInstance);
+
+                if (i > 0 && i%snapInterval == 0)
+                {
+                    var snap = newInstance.TakeSnapshot();
+                    EventStore.TakeSnapshot(_snapshotCollection, snap);
+                }
+            }
+            sw.Stop();
+            Console.WriteLine($"Took {sw.ElapsedMilliseconds} ms to write 10000 answers with interval of {snapInterval}");
+
+            sw.Reset();
+
+            sw.Start();
+            var fullInstance = new ReportingEntityInstance(formId, rei);
+            EventStore.LoadDomain(_eventCollection, fullInstance, formId, rei);
+            sw.Stop();
+            Console.WriteLine($"Took {sw.ElapsedMilliseconds} ms to load domain by replaying events");
+            sw.Reset();
+
+            sw.Start();
+            var snapInstance = new ReportingEntityInstance(formId, rei);
+            snapInstance.LoadSnapshot(EventStore.GetSnapshot(_snapshotCollection, rei));
+            EventStore.LoadDomainStartingAtVersion(_eventCollection, snapInstance, formId, rei, snapInstance.Version);
+            sw.Stop();
+            Console.WriteLine($"Took {sw.ElapsedMilliseconds} ms to load domain from snapshot");
+
+            Console.WriteLine("Replay instance status: ");
+            DisplayDomainStatus(fullInstance);
+
+            Console.WriteLine("Snapshot instance status: ");
+            DisplayDomainStatus(snapInstance);
+        }
+
         private static void PrintInstructions()
         {
             Console.WriteLine("Commands:");
@@ -199,6 +250,7 @@ namespace ReiEventTest
             Console.WriteLine(" [T]IME TEST Loading All Events and Snapshot for <REI>");
             Console.WriteLine(" [S]TATUS");
             Console.WriteLine(" [F]AILURES");
+            Console.WriteLine(" [PERF] <REI> <SNAP_INT> Load up a REI with 10000 events snapshotting every SNAP_INT event");
             Console.WriteLine(" [V]ERSION <VERSION>");
             Console.WriteLine(" [C]OMMANDS");
             Console.WriteLine(" [Q]UIT");
@@ -264,7 +316,7 @@ namespace ReiEventTest
                 cm.SetIsRootClass(true);
             });
 
-            var client = new MongoClient("mongodb://localhost:27020");
+            var client = new MongoClient("mongodb://localhost:27017");
             var db = client.GetDatabase("Events");
             _eventCollection = db.GetCollection<ReiEventBase>("Validations");
             _snapshotCollection = db.GetCollection<Snapshot>("Snapshots");

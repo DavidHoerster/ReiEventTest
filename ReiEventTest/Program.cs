@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using ReiEventTest.Entity;
+using ReiEventTest.Rules;
 
 namespace ReiEventTest
 {
@@ -19,10 +20,13 @@ namespace ReiEventTest
         static IMongoCollection<ReiEventBase> _eventCollection;
         static IMongoCollection<Snapshot> _snapshotCollection;
         static IMongoCollection<REI> _reiProjection;
+        static IMongoCollection<ControlRule> _ruleCollection;
 
         static void Main(string[] args)
         {
             SetupMongoMaps();
+
+            var rules = _ruleCollection.AsQueryable().AsEnumerable();
 
             var formId = new Guid("cca74fb0-87ae-4e42-8d48-7865de6f130c");
             ReportingEntityInstance instance = null;
@@ -104,7 +108,7 @@ namespace ReiEventTest
                         Console.WriteLine($"{sw.ElapsedMilliseconds} ms");
                         break;
                     case "PERF":
-                        PerfLoadNewRei(formId, cmdParts[1], Int32.Parse(cmdParts[2]), catalog);
+                        PerfLoadNewRei(formId, cmdParts[1], Int32.Parse(cmdParts[2]), catalog, rules);
                         break;
                     case "V":
                         rei = cmdParts[1];
@@ -117,7 +121,7 @@ namespace ReiEventTest
                         PrintInstructions();
                         break;
                     default:
-                        instance.AddAnswer(cmdParts[0], catalog, cmdParts.Skip(1).ToArray());
+                        instance.AddAnswer(cmdParts[0], catalog, rules, cmdParts.Skip(1).ToArray());
                         break;
                 }
             }
@@ -192,7 +196,7 @@ namespace ReiEventTest
                                 c => c.Version);
         }
 
-        private static void PerfLoadNewRei(Guid formId, String rei, Int32 snapInterval, ControlCatalog catalog)
+        private static void PerfLoadNewRei(Guid formId, String rei, Int32 snapInterval, ControlCatalog catalog, IEnumerable<ControlRule> rules)
         {
             var newInstance = new ReportingEntityInstance(formId, rei);
             var fields = new String[]{ "FirstName", "LastName", "Age", "Email", "FavoriteFood" };
@@ -204,7 +208,7 @@ namespace ReiEventTest
             for (int i = 0; i < 10000; i++)
             {
                 var field = fields[i % 5];
-                newInstance.AddAnswer(field, catalog, "answer" + i.ToString());
+                newInstance.AddAnswer(field, catalog, rules, "answer" + i.ToString());
 
                 EventStore.PersistEvents(_eventCollection, newInstance);
 
@@ -323,6 +327,7 @@ namespace ReiEventTest
             _eventCollection = db.GetCollection<ReiEventBase>("Validations");
             _snapshotCollection = db.GetCollection<Snapshot>("Snapshots");
             _reiProjection = db.GetCollection<REI>("ReportingEntityInstance");
+            _ruleCollection = db.GetCollection<ControlRule>("Rules");
         }
     }
 }

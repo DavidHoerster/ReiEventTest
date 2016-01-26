@@ -1,6 +1,7 @@
 ﻿using Cti.RegulatoryReporting.Entity.Form.Controls;
 using Cti.RegulatoryReporting.Entity.Form.ControlValidation;
 using ReiEventTest.Events;
+using ReiEventTest.Rules;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace ReiEventTest
         public String ReportingEntityId { get; private set; }
         public Guid FormDefinitionId { get; private set; }
 
-        public void AddAnswer(String controlId, ControlCatalog catalog, params Object[] answers)
+        public void AddAnswer(String controlId, ControlCatalog catalog, IEnumerable<ControlRule> rules, params Object[] answers)
         {
             var date = DateTime.UtcNow;
             ApplyChange(new ControlAnswered
@@ -72,6 +73,9 @@ namespace ReiEventTest
                     });
                 }
             }
+
+            RunRules(controlId, catalog, rules, date, answers);
+
         }
 
         public IEnumerable<ControlValidatorStatus> GetFailingControls()
@@ -90,6 +94,35 @@ namespace ReiEventTest
             return ControlStatus.Select(c => c.Value);
         }
 
+        private void RunRules(String controlId, ControlCatalog catalog, IEnumerable<ControlRule> rules, DateTime now, Object[] answers)
+        {
+            var results = new List<RuleEvaluated>();
+            var validRules = rules.Where(r => r.ControlId == controlId);
+            foreach (var rule in validRules)
+            {
+                var calc = new NCalc.Expression(rule.Rule.If);
+                foreach (var answer in answers)
+                {
+                    calc.Parameters.Clear();
+                    calc.Parameters.Add(controlId, answer);
+                    var result = (Boolean)calc.Evaluate();
+
+                    ApplyChange(new RuleEvaluated
+                    {
+                        ControlId = controlId,
+                        Date = now,
+                        FormId = rule.FormId,
+                        Id = Guid.NewGuid(),
+                        ReportingEntityInstanceId = ReportingEntityId,
+                        Result = result ? rule.Rule.Then : rule.Rule.Else,
+                        RuleName = rule.Rule.Name,
+                        Values = answers,
+                        Version = Version
+                    });
+                }
+            }
+        }
+
         private IEnumerable<ValidationMessage> ValidateAnswers(String controlId, ControlCatalog catalog, Object[] answers)
         {
             var msgs = new List<ValidationMessage>();
@@ -103,7 +136,7 @@ namespace ReiEventTest
             {
                 foreach (var answer in answers)
                 {
-                    var msg = val.Validate(catalog.Id, answer);
+                    var msg = val.Validate(answer);
                     msg.Message.ObjectName = val.GetType().Name;
                     msgs.Add(msg);
                 }
@@ -188,6 +221,12 @@ namespace ReiEventTest
                 ControlAnswers.Add(key, item);
             }
             Version = evt.Version;
+        }
+
+        private void Apply(RuleEvaluated evt)
+        {
+            //probably need to drop this on a bus
+            Console.WriteLine($"{evt.RuleName} for {evt.ControlId} in REI {evt.ReportingEntityInstanceId} evaluated to {evt.Result}");
         }
 
         public Snapshot TakeSnapshot()

@@ -294,6 +294,14 @@ namespace ReiEventTest
                     new MaxLengthValidator(new Dictionary<String, Object> { {"maxLength", 40 } }),
                     new MinLengthValidator(new Dictionary<string, object> { { "minLength", 2 } }),
                 }, "String"),
+                new ControlField("FirstPart", new List<String>(), new List<IControlValidator>
+                {
+                    new NumericValidator(),
+                }, "Number"),
+                new ControlField("SecondPart", new List<String>(), new List<IControlValidator>
+                {
+                    new NumericValidator(),
+                }, "Number"),
             });
 
             return catalog;
@@ -310,6 +318,7 @@ namespace ReiEventTest
                 cm.AddKnownType(typeof(ValidationEventBase));
                 cm.AddKnownType(typeof(ValidationPassed));
                 cm.AddKnownType(typeof(ValidationFailed));
+                cm.AddKnownType(typeof(RuleEvaluated));
 
                 cm.SetIsRootClass(true);
             });

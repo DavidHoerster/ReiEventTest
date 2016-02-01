@@ -331,6 +331,18 @@ namespace ReiEventTest
                 cm.SetIsRootClass(true);
             });
 
+            BsonClassMap.RegisterClassMap<RuleOutcome>(cm =>
+            {
+                cm.AutoMap();
+                cm.AddKnownType(typeof(NoActionOutcome));
+                cm.AddKnownType(typeof(EnableOutcome));
+                cm.AddKnownType(typeof(DisableOutcome));
+                cm.AddKnownType(typeof(FailedValidationOutcome));
+                cm.AddKnownType(typeof(PassedValidationOutcome));
+
+                cm.SetIsRootClass(true);
+            });
+
             var client = new MongoClient("mongodb://localhost:27017");
             var db = client.GetDatabase("Events");
             _eventCollection = db.GetCollection<ReiEventBase>("Validations");

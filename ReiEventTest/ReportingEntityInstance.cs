@@ -98,27 +98,73 @@ namespace ReiEventTest
         {
             var results = new List<RuleEvaluated>();
             var validRules = rules.Where(r => r.ControlId == controlId);
+            var parameters = ControlAnswers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Values.First());
             foreach (var rule in validRules)
             {
                 var calc = new NCalc.Expression(rule.Rule.If);
+                
                 foreach (var answer in answers)
                 {
                     calc.Parameters.Clear();
-                    calc.Parameters.Add(controlId, answer);
-                    var result = (Boolean)calc.Evaluate();
+                    calc.Parameters = parameters;
+                    calc.Parameters[controlId] = answer;
 
-                    ApplyChange(new RuleEvaluated
+                    try
                     {
-                        ControlId = controlId,
-                        Date = now,
-                        FormId = rule.FormId,
-                        Id = Guid.NewGuid(),
-                        ReportingEntityInstanceId = ReportingEntityId,
-                        Result = result ? rule.Rule.Then : rule.Rule.Else,
-                        RuleName = rule.Rule.Name,
-                        Values = answers,
-                        Version = Version
-                    });
+                        var result = (Boolean)calc.Evaluate();
+                        String message = null;
+                        if (result)
+                        {
+                            switch (rule.Rule.Then.GetType().Name)
+                            {
+                                case "NoActionOutcome":
+                                    message = rule.Rule.Then.Message;
+                                    break;
+                                case "FailedValidationOutcome":
+                                    var outcome = (FailedValidationOutcome)rule.Rule.Then;
+
+                                    message = $"{outcome.ValidatorName} failed for {outcome.ControlId} with message {outcome.Message}";
+                                    break;
+                                default:
+                                    message = rule.Rule.Then.Message;
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            switch (rule.Rule.Else.GetType().Name)
+                            {
+                                case "NoActionOutcome":
+                                    message = rule.Rule.Else.Message;
+                                    break;
+                                case "FailedValidationOutcome":
+                                    var outcome = (FailedValidationOutcome)rule.Rule.Else;
+
+                                    message = $"{outcome.ValidatorName} failed for {outcome.ControlId} with message {outcome.Message}";
+                                    break;
+                                default:
+                                    message = rule.Rule.Else.Message;
+                                    break;
+                            }
+                        }
+
+                        ApplyChange(new RuleEvaluated
+                        {
+                            ControlId = controlId,
+                            Date = now,
+                            FormId = rule.FormId,
+                            Id = Guid.NewGuid(),
+                            ReportingEntityInstanceId = ReportingEntityId,
+                            Result = message,
+                            RuleName = rule.Rule.Name,
+                            Values = answers,
+                            Version = Version
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Error in expression: {e.Message}");
+                    }
                 }
             }
         }

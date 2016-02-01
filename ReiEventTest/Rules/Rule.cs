@@ -10,7 +10,7 @@ namespace ReiEventTest.Rules
     {
         public String Name { get; private set; }
         public String If { get; private set; }
-        public String Then { get; private set; }
-        public String Else { get; private set; }
+        public RuleOutcome Then { get; private set; }
+        public RuleOutcome Else { get; private set; }
     }
 }
